@@ -13,7 +13,29 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdatomic.h>
+
+/*
+ * Macros below provide atomic interop between C++ and C as
+ * <stdatomic.h> is not compatible with C++ see
+ * http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0943r1.html for
+ * more information.
+ */
+#ifdef __cplusplus /* for std C++11 compiler */
+    #include <atomic>
+    #define _Atomic(T) std::atomic<T>
+
+    using std::memory_order;
+    using std::memory_order_relaxed;
+    using std::memory_order_consume;
+    using std::memory_order_acquire;
+    using std::memory_order_release;
+    using std::memory_order_acq_rel;
+    using std::memory_order_seq_cst;
+
+    using std::atomic_int_least64_t;
+#else /* for std C11 compiler */
+    #include <stdatomic.h>
+#endif
 
 struct hdr_histogram
 {
