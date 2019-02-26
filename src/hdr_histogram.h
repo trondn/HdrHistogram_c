@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdatomic.h>
 
 struct hdr_histogram
 {
@@ -25,13 +26,13 @@ struct hdr_histogram
     int64_t sub_bucket_mask;
     int32_t sub_bucket_count;
     int32_t bucket_count;
-    int64_t min_value;
-    int64_t max_value;
+    atomic_int_least64_t min_value;
+    atomic_int_least64_t max_value;
     int32_t normalizing_index_offset;
     double conversion_ratio;
     int32_t counts_len;
-    int64_t total_count;
-    int64_t* counts;
+    atomic_int_least64_t total_count;
+    atomic_int_least64_t* counts;
 };
 
 #ifdef __cplusplus
