@@ -4,7 +4,6 @@
  * as explained at http://creativecommons.org/publicdomain/zero/1.0/
  */
 
-#include <stdatomic.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <math.h>
