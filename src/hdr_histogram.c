@@ -346,7 +346,7 @@ int hdr_init(
         int significant_figures,
         struct hdr_histogram** result)
 {
-    int64_t* counts;
+    atomic_int_least64_t* counts;
     struct hdr_histogram_bucket_config cfg;
     struct hdr_histogram* histogram;
 
