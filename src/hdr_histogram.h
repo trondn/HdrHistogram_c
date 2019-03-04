@@ -33,8 +33,36 @@
     using std::memory_order_seq_cst;
 
     using std::atomic_int_least64_t;
-#else /* for std C11 compiler */
-    #include <stdatomic.h>
+#else /* for std C compiler */
+    #ifdef _MSC_VER /* for MSVC as it doesn’t support stdatomic.h */
+        /*
+         * MSVC does not support stdatomic.h so we have to use a volatile
+         * variable and Interlock* methods
+         *
+         * MSVC treats volatile variables differently by default and automatically
+         * provides higher memory ordering than an ISO compliant volatile.
+         *
+         * See link bellow for more information.
+         * https://docs.microsoft.com/en-us/cpp/cpp/volatile-cpp?view=vs-2017
+         */
+        #define WIN32_LEAN_AND_MEAN
+        #include <Windows.h>
+
+        typedef volatile int64_t atomic_int_least64_t;
+        #define memory_order_relaxed 0
+
+        #define atomic_load_explicit(loadAdd, memory_order) (*loadAdd)
+        #define atomic_compare_exchange_weak_explicit( \
+                obj, expected, desired, succ, fail)    \
+            (InterlockedCompareExchange64(obj, desired, *expected) == *expected)
+        #define atomic_fetch_add_explicit(obj, arg, memory_order) \
+            InterlockedExchangeAdd64(obj, arg)
+        #define atomic_store_explicit(obj, arg, memory_order) \
+            InterlockedExchange64(obj, arg)
+        #define atomic_store(obj, arg) InterlockedExchange64(obj, arg)
+    #else /* for std C11 compiler */
+        #include <stdatomic.h>
+    #endif
 #endif
 
 struct hdr_histogram
