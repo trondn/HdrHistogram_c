@@ -6,6 +6,11 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stddef.h>
+#if _MSC_VER
+#include <malloc.h>
+#define _Static_assert(expression , message) _STATIC_ASSERT(expression)
+#endif
 #include <math.h>
 #include <assert.h>
 #include <stdio.h>
@@ -16,6 +21,13 @@
 
 #include "hdr_histogram.h"
 #include "hdr_tests.h"
+
+_Static_assert(offsetof(struct hdr_histogram, cache_line_padding) == 64,
+               "Assert second cache line offset is 64 bytes");
+_Static_assert(offsetof(struct hdr_histogram, cache_line_padding_2) == 64 * 2,
+               "Assert third cache line offset is 128 bytes");
+_Static_assert(sizeof(struct hdr_histogram) == 64 * 3,
+               "Assert struct hdr_histogram size is 192 bytes");
 
 /*  ######   #######  ##     ## ##    ## ########  ######  */
 /* ##    ## ##     ## ##     ## ###   ##    ##    ##    ## */
@@ -340,6 +352,28 @@ void hdr_init_preallocated(struct hdr_histogram* h, struct hdr_histogram_bucket_
     h->total_count                     = 0;
 }
 
+void* hdr_aligned_calloc(size_t alignment, size_t size) {
+    void* memPtr = NULL;
+#ifdef _MSC_VER
+    memPtr = _aligned_malloc(size, alignment);
+#else
+    posix_memalign(&memPtr, alignment, size);
+#endif
+    if(memPtr) {
+        memset(memPtr, 0, size);
+    }
+    return memPtr;
+}
+
+void hdr_aligned_free(void* memPtr) {
+#ifdef _MSC_VER
+    _aligned_free(memPtr);
+#else
+    free(memPtr);
+#endif
+
+}
+
 int hdr_init(
         int64_t lowest_trackable_value,
         int64_t highest_trackable_value,
@@ -356,8 +390,8 @@ int hdr_init(
         return r;
     }
 
-    counts = calloc((size_t) cfg.counts_len, sizeof(int64_t));
-    histogram = calloc(1, sizeof(struct hdr_histogram));
+    counts = hdr_aligned_calloc(128, (size_t) cfg.counts_len * sizeof(atomic_int_least64_t));
+    histogram = hdr_aligned_calloc(128, sizeof(struct hdr_histogram));
 
     if (!counts || !histogram)
     {
@@ -374,8 +408,8 @@ int hdr_init(
 
 void hdr_close(struct hdr_histogram* h)
 {
-    free(h->counts);
-    free(h);
+    hdr_aligned_free(h->counts);
+    hdr_aligned_free(h);
 }
 
 int hdr_alloc(int64_t highest_trackable_value, int significant_figures, struct hdr_histogram** result)
