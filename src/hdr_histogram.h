@@ -10,6 +10,7 @@
 #ifndef HDR_HISTOGRAM_H
 #define HDR_HISTOGRAM_H 1
 
+#include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -67,6 +68,7 @@
 
 struct hdr_histogram
 {
+    // Write Once Read meany cache line 1
     int64_t lowest_trackable_value;
     int64_t highest_trackable_value;
     int32_t unit_magnitude;
@@ -76,13 +78,17 @@ struct hdr_histogram
     int64_t sub_bucket_mask;
     int32_t sub_bucket_count;
     int32_t bucket_count;
+    int32_t normalizing_index_offset;
+    int32_t counts_len;
+    atomic_int_least64_t* counts;
+    // cache line 2
+    uint8_t cache_line_padding[48];
+    double conversion_ratio;
+    atomic_int_least64_t total_count;
+    // cache line 3
+    uint8_t cache_line_padding_2[48];
     atomic_int_least64_t min_value;
     atomic_int_least64_t max_value;
-    int32_t normalizing_index_offset;
-    double conversion_ratio;
-    int32_t counts_len;
-    atomic_int_least64_t total_count;
-    atomic_int_least64_t* counts;
 };
 
 #ifdef __cplusplus
@@ -463,6 +469,23 @@ int hdr_calculate_bucket_config(
     int64_t highest_trackable_value,
     int significant_figures,
     struct hdr_histogram_bucket_config* cfg);
+
+/**
+ * Function to allocate memory that is aligned to a multiple of pram alignment,
+ * the memory allocated will also be zeroed
+ *
+ * @param alignment the address of the memory allocated will be a multiple of
+ * this value. alignment be a multiple of sizeof(void *) and two.
+ * @param size of memory to be allocated
+ */
+void* hdr_aligned_calloc(size_t alignment, size_t size);
+
+/**
+ * Function to free memory that was align allocated using hdr_aligned_calloc
+ *
+ * @param memPtr pointer to memory to free
+ */
+void hdr_aligned_free(void* memPtr);
 
 void hdr_init_preallocated(struct hdr_histogram* h, struct hdr_histogram_bucket_config* cfg);
 
