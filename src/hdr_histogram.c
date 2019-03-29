@@ -78,6 +78,19 @@ static void counts_inc_normalised(
     atomic_fetch_add_explicit(&h->total_count, value, memory_order_relaxed);
 }
 
+#ifdef _MSC_VER
+_Bool atomic_compare_exchange(volatile atomic_int_least64_t* obj,
+                              int64_t* expected,
+                              int64_t desired) {
+    if (InterlockedCompareExchange64(obj, desired, *expected) == *expected) {
+        return true;
+    } else {
+        *expected = atomic_load_explicit(obj, memory_order_relaxed);
+        return false;
+    }
+}
+#endif
+
 static void update_min_max(struct hdr_histogram* h, int64_t value) {
     if (value > 0) {
         int64_t observedMin =
