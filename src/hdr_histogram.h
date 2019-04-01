@@ -52,10 +52,13 @@
         typedef volatile int64_t atomic_int_least64_t;
         #define memory_order_relaxed 0
 
+        _Bool atomic_compare_exchange(volatile atomic_int_least64_t *obj,
+                                            int64_t* expected, int64_t desired);
+
         #define atomic_load_explicit(loadAdd, memory_order) (*loadAdd)
         #define atomic_compare_exchange_weak_explicit( \
                 obj, expected, desired, succ, fail)    \
-            (InterlockedCompareExchange64(obj, desired, *expected) == *expected)
+            atomic_compare_exchange(obj, expected, desired)
         #define atomic_fetch_add_explicit(obj, arg, memory_order) \
             InterlockedExchangeAdd64(obj, arg)
         #define atomic_store_explicit(obj, arg, memory_order) \
