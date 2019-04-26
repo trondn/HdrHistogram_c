@@ -352,15 +352,15 @@ void hdr_init_preallocated(struct hdr_histogram* h, struct hdr_histogram_bucket_
     h->total_count                     = 0;
 }
 
-void* hdr_aligned_calloc(size_t alignment, size_t size) {
+void* hdr_aligned_calloc(size_t num, size_t size) {
     void* memPtr = NULL;
 #ifdef _MSC_VER
-    memPtr = _aligned_malloc(size, alignment);
+    memPtr = _aligned_malloc(num * size, 128);
 #else
-    posix_memalign(&memPtr, alignment, size);
+    posix_memalign(&memPtr, 128, num * size);
 #endif
     if(memPtr) {
-        memset(memPtr, 0, size);
+        memset(memPtr, 0, num * size);
     }
     return memPtr;
 }
@@ -374,12 +374,22 @@ void hdr_aligned_free(void* memPtr) {
 
 }
 
-int hdr_init(
-        int64_t lowest_trackable_value,
-        int64_t highest_trackable_value,
-        int significant_figures,
-        struct hdr_histogram** result)
-{
+int hdr_init(int64_t lowest_trackable_value,
+             int64_t highest_trackable_value,
+             int significant_figures,
+             struct hdr_histogram** result) {
+    return hdr_init_ex(lowest_trackable_value,
+                       highest_trackable_value,
+                       significant_figures,
+                       result,
+                       hdr_aligned_calloc);
+}
+
+int hdr_init_ex(int64_t lowest_trackable_value,
+                int64_t highest_trackable_value,
+                int significant_figures,
+                struct hdr_histogram** result,
+                void* (*custom_calloc)(size_t num, size_t size)) {
     atomic_int_least64_t* counts;
     struct hdr_histogram_bucket_config cfg;
     struct hdr_histogram* histogram;
@@ -390,8 +400,8 @@ int hdr_init(
         return r;
     }
 
-    counts = hdr_aligned_calloc(128, (size_t) cfg.counts_len * sizeof(atomic_int_least64_t));
-    histogram = hdr_aligned_calloc(128, sizeof(struct hdr_histogram));
+    counts = custom_calloc((size_t) cfg.counts_len, sizeof(atomic_int_least64_t));
+    histogram = custom_calloc(1, sizeof(struct hdr_histogram));
 
     if (!counts || !histogram)
     {
@@ -408,8 +418,13 @@ int hdr_init(
 
 void hdr_close(struct hdr_histogram* h)
 {
-    hdr_aligned_free(h->counts);
-    hdr_aligned_free(h);
+    hdr_close_ex(h, hdr_aligned_free);
+}
+
+void hdr_close_ex(struct hdr_histogram* h, void (*custom_free)(void* memPtr))
+{
+    custom_free(h->counts);
+    custom_free(h);
 }
 
 int hdr_alloc(int64_t highest_trackable_value, int significant_figures, struct hdr_histogram** result)
