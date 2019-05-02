@@ -125,11 +125,48 @@ int hdr_init(
     struct hdr_histogram** result);
 
 /**
+ * Allocate the memory using custom calloc and initialise the hdr_histogram.
+ *
+ * Due to the size of the histogram being the result of some reasonably
+ * involved math on the input parameters this function it is tricky to stack allocate.
+ * The histogram should be released with hdr_close
+ *
+ * @param lowest_trackable_value The smallest possible value to be put into the
+ * histogram.
+ * @param highest_trackable_value The largest possible value to be put into the
+ * histogram.
+ * @param significant_figures The level of precision for this histogram, i.e. the number
+ * of figures in a decimal number that will be maintained.  E.g. a value of 3 will mean
+ * the results from the histogram will be accurate up to the first three digits.  Must
+ * be a value between 1 and 5 (inclusive).
+ * @param result Output parameter to capture allocated histogram.
+ * @param custom_calloc function allocate memory for the histogram and
+ * mem set to 0. 
+ * @return 0 on success, EINVAL if lowest_trackable_value is < 1 or the
+ * significant_figure value is outside of the allowed range, ENOMEM if malloc
+ * failed.
+ */
+int hdr_init_ex(
+        int64_t lowest_trackable_value,
+        int64_t highest_trackable_value,
+        int significant_figures,
+        struct hdr_histogram** result,
+        void* (*custom_calloc) (size_t num, size_t size));
+
+/**
  * Free the memory and close the hdr_histogram.
  *
  * @param h The histogram you want to close.
  */
 void hdr_close(struct hdr_histogram* h);
+
+/**
+ * Free the memory and close the hdr_histogram.
+ *
+ * @param h The histogram you want to close.
+ * @param custom_free to be used on memory allocated by custom_calloc
+ */
+void hdr_close_ex(struct hdr_histogram* h, void (*custom_free)(void* memPtr));
 
 /**
  * Allocate the memory and initialise the hdr_histogram.  This is the equivalent of calling
@@ -474,14 +511,13 @@ int hdr_calculate_bucket_config(
     struct hdr_histogram_bucket_config* cfg);
 
 /**
- * Function to allocate memory that is aligned to a multiple of pram alignment,
+ * Function to allocate memory that is aligned to a multiple of 128 alignment,
  * the memory allocated will also be zeroed
  *
- * @param alignment the address of the memory allocated will be a multiple of
- * this value. alignment be a multiple of sizeof(void *) and two.
- * @param size of memory to be allocated
+ * @param num number of elements to be allocated
+ * @param size of each element allocated
  */
-void* hdr_aligned_calloc(size_t alignment, size_t size);
+void* hdr_aligned_calloc(size_t num, size_t size);
 
 /**
  * Function to free memory that was align allocated using hdr_aligned_calloc
