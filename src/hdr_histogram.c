@@ -370,7 +370,10 @@ void* hdr_aligned_calloc(size_t num, size_t size) {
 #ifdef _MSC_VER
     memPtr = _aligned_malloc(num * size, 128);
 #else
-    posix_memalign(&memPtr, 128, num * size);
+    // posix_memalign() returns 0 on success, otherwise return NULL ptr
+    if(posix_memalign(&memPtr, 128, num * size) != 0) {
+        return NULL;
+    }
 #endif
     if(memPtr) {
         memset(memPtr, 0, num * size);
