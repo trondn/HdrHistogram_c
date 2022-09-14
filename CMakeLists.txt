@@ -27,11 +27,15 @@ if(UNIX)
     set(CMAKE_C_FLAGS_RELEASE "-O3 -g")
 endif()
 
-if(WIN32)
+option(ENABLE_LOG_FEATURE "Enable log feature" OFF)
+
+if (ENABLE_LOG_FEATURE)
+  if(WIN32)
     find_package (zlib REQUIRED)
-else()
+  else()
     find_package (ZLIB REQUIRED)
-endif()
+  endif()
+endif(ENABLE_LOG_FEATURE)
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/src")
 
